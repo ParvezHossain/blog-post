@@ -1,0 +1,9 @@
+spring:
+  application:
+    name: blog-post
+
+  profiles:
+    active: dev   # default profile (override in prod)
+
+server:
+  port: 8081
