@@ -1,5 +1,6 @@
 package com.parvez.blogs.security;
 
+import io.jsonwebtoken.io.Decoders;
 import jakarta.validation.constraints.NotNull;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.annotation.Value;
@@ -32,6 +33,10 @@ public class JwtUtil {
         this.key = Keys.hmacShaKeyFor(decodedKey);
         this.ACCESS_TOKEN_EXPIRATION_MS = ACCESS_TOKEN_EXPIRATION_MS;
         this.REFRESH_TOKEN_EXPIRATION_MS = REFRESH_TOKEN_EXPIRATION_MS;
+    }
+
+    public Key getSigningKey(){
+        return this.key;
     }
 
     // ------------------- Access Token -------------------

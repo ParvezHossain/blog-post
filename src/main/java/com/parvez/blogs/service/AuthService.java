@@ -10,8 +10,12 @@ import com.parvez.blogs.entity.User;
 import com.parvez.blogs.exception.InvalidTokenException;
 import com.parvez.blogs.exception.ResourceNotFoundException;
 import com.parvez.blogs.repository.RefreshTokenRepository;
+import com.parvez.blogs.repository.TokenDenylistRepository;
 import com.parvez.blogs.repository.UserRepository;
 import com.parvez.blogs.security.JwtUtil;
+import io.jsonwebtoken.Claims;
+import io.jsonwebtoken.ExpiredJwtException;
+import io.jsonwebtoken.Jwts;
 import jakarta.transaction.Transactional;
 import lombok.RequiredArgsConstructor;
 import org.jspecify.annotations.NonNull;
@@ -23,6 +27,7 @@ import org.springframework.stereotype.Service;
 
 import java.time.Instant;
 import java.time.temporal.ChronoUnit;
+import java.util.Date;
 import java.util.Optional;
 
 @Service
@@ -34,6 +39,7 @@ public class AuthService {
     private final PasswordEncoder passwordEncoder;
     private final JwtUtil jwtUtil;
     private final RefreshTokenRepository refreshTokenRepository;
+    private final TokenDenylistRepository tokenDenylistRepository;
     private final AuthenticationManager authenticationManager;
     private LoginRequest dto;
 
@@ -73,6 +79,18 @@ public class AuthService {
         String refreshToken = jwtUtil.generateRefreshToken(dto.username());
         saveRefreshToken(dto.username(), refreshToken);
         return new TokenResponse(accessToken, refreshToken);
+    }
+
+    public void logout(String authHeader) {
+        String token = extractToken(authHeader);
+        String username = jwtUtil.extractUsername(token);
+        long ttl = this.getRemainingExpirationTime(token);
+        if (ttl > 0) {
+            // Store in Redis with the token as the key
+            // Set the TTL so it auto-deletes when the JWT naturally expires
+            tokenDenylistRepository.save(token, ttl);
+        }
+        refreshTokenRepository.deleteByUsername(username);
     }
 
     private void rotateRefreshToken(String username) {
@@ -147,5 +165,20 @@ public class AuthService {
 
         saveRefreshToken(username, newRefreshToken);
         return new TokenResponse(newAccessToken, newRefreshToken);
+    }
+
+    private long getRemainingExpirationTime(@NonNull String token) {
+        try {
+            Claims claims = Jwts.parserBuilder()
+                    .setSigningKey(jwtUtil.getSigningKey())
+                    .build()
+                    .parseClaimsJws(token)
+                    .getBody();
+            Date expiration = claims.getExpiration();
+            long diff = expiration.getTime() - System.currentTimeMillis();
+            return Math.max(diff, 0);
+        } catch (ExpiredJwtException e) {
+            return 0;
+        }
     }
 }

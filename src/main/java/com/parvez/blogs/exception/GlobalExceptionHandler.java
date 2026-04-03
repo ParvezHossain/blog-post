@@ -10,12 +10,15 @@ import org.springframework.dao.DataIntegrityViolationException;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.orm.ObjectOptimisticLockingFailureException;
+import org.springframework.security.authentication.AuthenticationServiceException;
 import org.springframework.security.authentication.BadCredentialsException;
 import org.springframework.web.bind.annotation.ExceptionHandler;
 import org.springframework.web.bind.annotation.RestControllerAdvice;
 
 
+import java.util.HashMap;
 import java.util.List;
+import java.util.Map;
 
 @RestControllerAdvice
 public class GlobalExceptionHandler {
@@ -74,6 +77,18 @@ public class GlobalExceptionHandler {
                         "Invalid token signature. The token has been tampered with or is incorrect.",
                         null
                 ));
+    }
+
+    @ExceptionHandler(AuthenticationServiceException.class)
+    public ResponseEntity<Map<String, Object>> handleRevokedToken(
+            AuthenticationServiceException exception
+    ) {
+        Map<String, Object> body = new HashMap<>();
+        body.put("message", exception.getMessage());
+        body.put("timestamp", System.currentTimeMillis());
+        body.put("revoked", true);
+        body.put("status", HttpStatus.UNAUTHORIZED.value());
+        return ResponseEntity.status(HttpStatus.UNAUTHORIZED).body(body);
     }
 
     @ExceptionHandler(InvalidTokenException.class)

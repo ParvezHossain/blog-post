@@ -30,9 +30,18 @@ public class AuthController {
     }
 
     @Transactional
+    @PostMapping(ApiPaths.LOGOUT)
+    public ResponseEntity<Void> logout(
+            @RequestHeader("Authorization") String token
+    ) {
+        authService.logout(token);
+        return ResponseEntity.ok().build();
+    }
+
+    @Transactional
     @PostMapping(ApiPaths.REFRESH_TOKEN)
     public ResponseEntity<TokenResponse> refresh(
-             @Valid @RequestBody RefreshRequest request
+            @Valid @RequestBody RefreshRequest request
     ) {
         TokenResponse response = authService.refreshRotation(request.refreshToken());
         return ResponseEntity.ok(response);
