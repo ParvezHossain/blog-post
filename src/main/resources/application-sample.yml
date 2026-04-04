@@ -45,8 +45,8 @@ spring:
         host: localhost
         port: 6379
         timeout: 2s
-        max_request_per_minute: 5
-        window_second: 10
+        max-requests: 5
+        window-seconds: 100
 
         lettuce:
           pool:
@@ -54,11 +54,19 @@ spring:
             max-idle: 16
             min-idle: 4
 
+#  rate-limiter:
+#    type: redis
+
+rate-limiter:
+  type: redis
+  max-requests: 2
+  window-seconds: 30
+
   mail:
     host: smtp.gmail.com
     port: 587
     username: parvezhossain724@gmail.com
-    password: gmjdrtdctnyeaj
+    password: gmjdr1234ngpyeaj
     properties:
       mail:
         smtp:
@@ -74,7 +82,7 @@ logging:
     org.springframework.security: INFO
 
 jwt:
-  secret: "HNdUQ6/rEbglkRb89eNEwvQuHASmRHDdZUx6obVS0="
+  secret: "HNdUQ6/rEbglkRb89eNEwvQuHASmRHDdZUx6obVLAS0="
   expiration: 3600000
   refresh-expiration: 36000000
 

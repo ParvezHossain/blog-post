@@ -2,11 +2,13 @@ package com.parvez.blogs;
 
 import org.springframework.boot.SpringApplication;
 import org.springframework.boot.autoconfigure.SpringBootApplication;
+import org.springframework.boot.context.properties.EnableConfigurationProperties;
 import org.springframework.boot.mail.autoconfigure.MailSenderAutoConfiguration;
 
 @SpringBootApplication(
 		exclude = {MailSenderAutoConfiguration.class}
 )
+@EnableConfigurationProperties
 public class BlogPostApplication {
 
 	public static void main(String[] args) {
