@@ -1,7 +1,9 @@
 package com.parvez.blogs.config;
 
+import org.springframework.context.ApplicationContext;
 import org.springframework.context.annotation.*;
 import org.springframework.security.config.annotation.web.builders.HttpSecurity;
+import org.springframework.security.config.http.SessionCreationPolicy;
 import org.springframework.security.crypto.bcrypt.BCryptPasswordEncoder;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.security.web.SecurityFilterChain;
@@ -10,6 +12,7 @@ import org.springframework.http.HttpMethod;
 import org.springframework.security.authentication.AuthenticationManager;
 import org.springframework.security.config.annotation.authentication.configuration.AuthenticationConfiguration;
 import org.springframework.security.config.annotation.method.configuration.EnableMethodSecurity;
+import org.springframework.security.web.authentication.UsernamePasswordAuthenticationFilter;
 import org.springframework.web.cors.CorsConfiguration;
 import org.springframework.web.cors.CorsConfigurationSource;
 import org.springframework.web.cors.UrlBasedCorsConfigurationSource;
@@ -24,25 +27,17 @@ public class SecurityConfig {
 
     private final JwtAuthFilter jwtAuthFilter;
 
+    // Use ApplicationContext to fetch handlers lazily — breaks the cycle
+    private final ApplicationContext applicationContext;
+
     @Bean
     public CorsConfigurationSource corsConfigurationSource() {
         CorsConfiguration configuration = new CorsConfiguration();
-
-        // 1. Specify your Frontend URL (DO NOT use "*" in production)
         configuration.setAllowedOrigins(List.of("https://your-blog-frontend.com", "http://localhost:3000"));
-
-        // 2. Specify allowed HTTP Methods
         configuration.setAllowedMethods(List.of("GET", "POST", "PUT", "PATCH", "DELETE", "OPTIONS"));
-
-        // 3. Allow specific Headers (Required for JWT)
         configuration.setAllowedHeaders(List.of("Authorization", "Content-Type", "Cache-Control"));
-
-        // 4. Allow Credentials (Required if you ever move JWT to Cookies)
         configuration.setAllowCredentials(true);
-
-        // 5. Cache the pre-flight response for 1 hour to improve performance
         configuration.setMaxAge(3600L);
-
         UrlBasedCorsConfigurationSource source = new UrlBasedCorsConfigurationSource();
         source.registerCorsConfiguration("/**", configuration);
         return source;
@@ -51,9 +46,16 @@ public class SecurityConfig {
     @Bean
     public SecurityFilterChain securityWebFilterChain(HttpSecurity http) throws Exception {
 
+        OAuth2SuccessHandler successHandler = applicationContext.getBean(OAuth2SuccessHandler.class);
+        OAuth2FailureHandler failureHandler = applicationContext.getBean(OAuth2FailureHandler.class);
+
         http
                 .cors(cors -> cors.configurationSource(corsConfigurationSource()))
                 .csrf(csrf -> csrf.disable()) // Only disable if using JWT + Stateless
+                // OAuth2 needs a session to store the `state` parameter ──
+                .sessionManagement(session -> session
+                        .sessionCreationPolicy(SessionCreationPolicy.IF_REQUIRED)  // Allow session for OAuth2 flow only
+                )
                 .headers(headers -> headers
                         // Prevent Clickjacking (A01:2021)
                         // DENY: No one can frame your site.
@@ -89,7 +91,9 @@ public class SecurityConfig {
                                 ApiPaths.FORGOT_PASSWORD,
                                 ApiPaths.RESET_PASSWORD,
                                 ApiPaths.HOME,
-                                ApiPaths.REFRESH_TOKEN
+                                ApiPaths.REFRESH_TOKEN,
+                                "/oauth2/**",          // allow the OAuth2 redirect flow
+                                "/login/oauth2/**"     // Spring's internal callback path
                         ).permitAll()
 
                         // Allow GUESTS to view posts (GET requests only)
@@ -103,7 +107,6 @@ public class SecurityConfig {
                         .requestMatchers(HttpMethod.PATCH, ApiPaths.POSTS + "/**").hasRole("ADMIN")
                         .requestMatchers(HttpMethod.DELETE, ApiPaths.POSTS + "/**").hasRole("ADMIN")
 
-                        /* ================= PROTECTED API ================= */
                         .requestMatchers(ApiPaths.API_BASE + "/**")
                         .authenticated()
 
@@ -113,8 +116,19 @@ public class SecurityConfig {
                 )
                 .addFilterBefore(
                         jwtAuthFilter,
-                        org.springframework.security.web.authentication.UsernamePasswordAuthenticationFilter.class
-                );
+                        UsernamePasswordAuthenticationFilter.class
+                )
+                .oauth2Login(oauth2 -> oauth2
+                        .authorizationEndpoint(ep -> ep
+                                .baseUri("/oauth2/authorize")        // Start flow:  GET /oauth2/authorize/google
+                        )
+//                        .redirectionEndpoint(ep -> ep
+//                                .baseUri("/oauth2/callback/*")
+//                        )
+                        .successHandler(successHandler)
+                        .failureHandler(failureHandler)
+                )
+        ;
         return http.build();
     }
 

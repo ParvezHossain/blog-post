@@ -1,4 +1,36 @@
 spring:
+  security:
+    oauth2:
+      client:
+        registration:
+
+          google:
+            client-id: "705139499171-k4k67ire5g2qn0q4.apps.googleusercontent.com"
+            client-secret: "GOCSPX-_dre5RwvLQiK2SFrKEvuyhGJ"
+            scope:
+              - email
+              - profile
+            redirect-uri: "http://localhost:8081/login/oauth2/code/google"
+            authorization-grant-type: authorization_code
+          github:
+            client-id: "Ov23liMOjoKiS4tIx"
+            client-secret: "00308b711c2bc6951d4544c33d7243cf0"
+            scope:
+              - read:user                                # GitHub's scope for name/avatar
+              - user:email                               # Separate scope needed for email
+            redirect-uri: "http://localhost:8081/login/oauth2/code/github"
+            authorization-grant-type: authorization_code
+
+        provider:
+          google:
+            authorization-uri: https://accounts.google.com/o/oauth2/v2/auth
+            token-uri: https://oauth2.googleapis.com/token
+            user-info-uri: https://www.googleapis.com/oauth2/v3/userinfo
+            user-name-attribute: sub
+
+          # GitHub provider is built into Spring Security — no manual provider
+          # config needed. Spring knows GitHub's endpoints automatically.
+
   datasource:
     url: "jdbc:postgresql://localhost:5432/postgres"
     username: postgres
@@ -58,7 +90,7 @@ spring:
 #    type: redis
 
 rate-limiter:
-  type: redis
+  type: memory
   max-requests: 2
   window-seconds: 30
 
@@ -66,7 +98,7 @@ rate-limiter:
     host: smtp.gmail.com
     port: 587
     username: parvezhossain724@gmail.com
-    password: gmjdr1234ngpyeaj
+    password: gmjdrtdctn
     properties:
       mail:
         smtp:

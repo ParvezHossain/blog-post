@@ -5,6 +5,7 @@ import com.parvez.blogs.dto.*;
 import com.parvez.blogs.repository.RefreshTokenRepository;
 import com.parvez.blogs.security.JwtUtil;
 import com.parvez.blogs.service.AuthService;
+import com.parvez.blogs.service.RefreshTokenService;
 import jakarta.transaction.Transactional;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
@@ -16,6 +17,7 @@ import org.springframework.web.bind.annotation.*;
 @RequiredArgsConstructor
 public class AuthController {
     private final AuthService authService;
+    private final RefreshTokenService refreshTokenService;
     private final RefreshTokenRepository refreshTokenRepository;
 
     @Transactional
@@ -43,7 +45,7 @@ public class AuthController {
     public ResponseEntity<TokenResponse> refresh(
             @Valid @RequestBody RefreshRequest request
     ) {
-        TokenResponse response = authService.refreshRotation(request.refreshToken());
+        TokenResponse response = refreshTokenService.refreshRotation(request.refreshToken());
         return ResponseEntity.ok(response);
     }
 

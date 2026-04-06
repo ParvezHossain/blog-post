@@ -1,5 +1,6 @@
 package com.parvez.blogs.service;
 
+import com.parvez.blogs.config.AuthProvider;
 import com.parvez.blogs.dto.LoginRequest;
 import com.parvez.blogs.dto.TokenResponse;
 import com.parvez.blogs.dto.UserRegister;
@@ -13,10 +14,14 @@ import com.parvez.blogs.repository.RefreshTokenRepository;
 import com.parvez.blogs.repository.TokenDenylistRepository;
 import com.parvez.blogs.repository.UserRepository;
 import com.parvez.blogs.security.JwtUtil;
+import com.parvez.blogs.validation.LocalUserValidation;
 import io.jsonwebtoken.Claims;
 import io.jsonwebtoken.ExpiredJwtException;
 import io.jsonwebtoken.Jwts;
 import jakarta.transaction.Transactional;
+import jakarta.validation.ConstraintViolation;
+import jakarta.validation.ConstraintViolationException;
+import jakarta.validation.Validator;
 import lombok.RequiredArgsConstructor;
 import org.jspecify.annotations.NonNull;
 import org.springframework.dao.DataIntegrityViolationException;
@@ -29,6 +34,7 @@ import java.time.Instant;
 import java.time.temporal.ChronoUnit;
 import java.util.Date;
 import java.util.Optional;
+import java.util.Set;
 
 @Service
 @RequiredArgsConstructor
@@ -42,15 +48,22 @@ public class AuthService {
     private final TokenDenylistRepository tokenDenylistRepository;
     private final AuthenticationManager authenticationManager;
     private LoginRequest dto;
+    private final Validator validator;
 
 
     public UserResponse register(@NonNull UserRegister dto) {
         if (userRepository.existsByUsername(dto.username()))
             throw new DataIntegrityViolationException("Username is already in use");
 
-        if (userRepository.existsByEmail(dto.email())) {
+        // Prevent re-registration over an existing OAuth2 account
+        userRepository.findByEmail(dto.email()).ifPresent(existing -> {
+            if (existing.getProvider() != AuthProvider.LOCAL) {
+                throw new DataIntegrityViolationException(
+                        "This email is linked to a " + existing.getProvider() + " account. Please sign in with Google."
+                );
+            }
             throw new DataIntegrityViolationException("Email is already in use");
-        }
+        });
 
         User user = new User();
         user.setUsername(dto.username());
@@ -59,7 +72,14 @@ public class AuthService {
         user.setFirstName(dto.firstName());
         user.setLastName(dto.lastName());
         user.setRole(dto.role() != null ? dto.role() : Role.USER);
-        userRepository.save(user);
+        user.setProvider(AuthProvider.LOCAL);
+
+        // Explicitly validate LOCAL-only constraints before saving
+        Set<ConstraintViolation<User>> violations =
+                validator.validate(user, LocalUserValidation.class);
+        if (!violations.isEmpty()) {
+            throw new ConstraintViolationException(violations);
+        }
 
         return new UserResponse(
                 user.getId(),
@@ -123,7 +143,7 @@ public class AuthService {
         }
     }
 
-    private void saveRefreshToken(@NonNull String username, @NonNull String refreshToken) {
+    public void saveRefreshToken(@NonNull String username, @NonNull String refreshToken) {
         RefreshToken token = RefreshToken
                 .builder()
                 .username(username)
@@ -141,31 +161,7 @@ public class AuthService {
         return authHeader.substring(7);
     }
 
-    // Grace Period: We can implement such logic later on.
 
-    @Transactional
-    public TokenResponse refreshRotation(@NonNull String oldRefreshToken) {
-        RefreshToken storedToken = refreshTokenRepository.findByToken(oldRefreshToken)
-                .orElseThrow(() -> new InvalidTokenException("Token not recognized."));
-
-        if (!jwtUtil.validateRefreshToken(storedToken.getToken())) {
-            refreshTokenRepository.delete(storedToken);
-            throw new InvalidTokenException("Invalid refresh token");
-        }
-
-        String username = jwtUtil.extractUsername(storedToken.getToken());
-        User user = userRepository.findByUsername(username)
-                .orElseThrow(() -> new ResourceNotFoundException("Username not found"));
-
-        // ROTATION: Delete the used refresh token so it can't be used again
-        refreshTokenRepository.delete(storedToken);
-
-        String newAccessToken = jwtUtil.generateToken(username, user.getRole().name());
-        String newRefreshToken = jwtUtil.generateRefreshToken(username);
-
-        saveRefreshToken(username, newRefreshToken);
-        return new TokenResponse(newAccessToken, newRefreshToken);
-    }
 
     private long getRemainingExpirationTime(@NonNull String token) {
         try {

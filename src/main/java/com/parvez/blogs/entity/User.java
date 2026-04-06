@@ -1,6 +1,8 @@
 package com.parvez.blogs.entity;
 
 import com.fasterxml.jackson.annotation.JsonIgnore;
+import com.parvez.blogs.config.AuthProvider;
+import com.parvez.blogs.validation.LocalUserValidation;
 import jakarta.persistence.*;
 import jakarta.validation.constraints.*;
 import lombok.Data;
@@ -19,20 +21,23 @@ public class User {
     private Long version = 0L; // Optimistic locking
 
     /**
-     * Username rules:
-     * - exactly 8 characters
-     * - at least one uppercase
-     * - at least one lowercase
-     * - at least one special character
+     * LOCAL users: exactly 8 chars, upper + lower + special.
+     * GOOGLE users: "google_{sub}" — exempt from these rules.
+     * The @Size and @Pattern are grouped under LocalUserValidation
+     * so Hibernate only enforces them when explicitly requested.
      */
-
     @NotBlank(message = "Username is required")
-    @Size(min = 8, max = 8, message = "Username must be exactly 8 characters")
+    @Size(
+            min = 8, max = 50,              // widened max — Google sub produces longer usernames
+            groups = LocalUserValidation.class,
+            message = "Username must be exactly 8 characters"
+    )
     @Pattern(
             regexp = "^(?=.*[a-z])(?=.*[A-Z])(?=.*[^a-zA-Z0-9]).{8}$",
+            groups = LocalUserValidation.class,
             message = "Username must contain upper, lower, and special character"
     )
-    @Column(unique = true, nullable = false, length = 8)
+    @Column(unique = true, nullable = false, length = 50)  // widened from 8 → 50
     private String username;
 
     @NotBlank(message = "First name is required")
@@ -66,17 +71,28 @@ public class User {
 */
 
     /**
-     * Password:
-     * - Stored as BCrypt hash
-     * - Never serialized to JSON
+     * LOCAL users: required, min 8 chars, BCrypt hashed.
+     * GOOGLE users: null — they never have a password.
+     *
+     * @NotBlank and @Size are grouped so they only fire for LOCAL users.
      */
-
-    @NotBlank
-    @Size(min = 8, message = "Password must be at least 8 characters")
+    @NotBlank(
+            groups = LocalUserValidation.class,
+            message = "Password is required"
+    )
+    @Size(
+            min = 8,
+            groups = LocalUserValidation.class,
+            message = "Password must be at least 8 characters"
+    )
     @JsonIgnore
-    @Column(nullable = false)
+    @Column(nullable = true)
     private String password;
 
     @Enumerated(EnumType.STRING)
-    private Role role = Role.ADMIN;
+    private Role role = Role.USER;
+
+    @Enumerated(EnumType.STRING)
+    @Column(nullable = false)
+    private AuthProvider provider = AuthProvider.LOCAL;
 }
