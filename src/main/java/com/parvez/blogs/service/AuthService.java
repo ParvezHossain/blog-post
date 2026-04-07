@@ -113,7 +113,7 @@ public class AuthService {
         refreshTokenRepository.deleteByUsername(username);
     }
 
-    private void rotateRefreshToken(String username) {
+    public void rotateRefreshToken(String username) {
         refreshTokenRepository.deleteByUsername(username);
     }
 

@@ -77,6 +77,7 @@ public class OAuth2SuccessHandler implements AuthenticationSuccessHandler {
         String refreshToken = jwtUtil.generateRefreshToken(user.getUsername());
 
         // Persist refresh token so rotation and logout work correctly
+        authService.rotateRefreshToken(user.getUsername());
         authService.saveRefreshToken(user.getUsername(), refreshToken);
 
         // Return proper JSON
