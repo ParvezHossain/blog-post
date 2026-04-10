@@ -3,12 +3,13 @@ package com.parvez.blogs.controller;
 import com.parvez.blogs.config.ApiPaths;
 import com.parvez.blogs.dto.PostRequest;
 import com.parvez.blogs.dto.PostResponse;
+import com.parvez.blogs.security.IsPostOwnerOrAdmin;
 import com.parvez.blogs.service.PostService;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
 import org.springframework.data.domain.Page;
-import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
+import org.springframework.security.access.AccessDeniedException;
 import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.web.bind.annotation.*;
 import org.springframework.web.servlet.support.ServletUriComponentsBuilder;
@@ -37,15 +38,17 @@ public class PostController {
      * PUBLIC: Anyone can view a specific post by its ID.
      */
     @GetMapping("/{id}")
-    public ResponseEntity<PostResponse> getOne(@PathVariable Long id) {
-        return ResponseEntity.ok(postService.getPostById(id));
+    public ResponseEntity<PostResponse> getOne(
+            @PathVariable Long id,
+            @RequestParam(name = "includeDeleted", defaultValue = "false") boolean includeDeleted) {
+        return ResponseEntity.ok(postService.getPostById(id, includeDeleted));
     }
 
     /**
      * SECURE: Restricted to ADMIN. Creates a new blog post.
      */
     @PostMapping
-    @PreAuthorize("hasRole('ADMIN')")
+//    @PreAuthorize("hasRole('ADMIN')")
     public ResponseEntity<PostResponse> createPost(@Valid @RequestBody PostRequest postRequest) {
 
         PostResponse postResponse = postService.createPost(postRequest);
@@ -64,8 +67,9 @@ public class PostController {
      * SECURE: Restricted to ADMIN. Updates an existing post.
      */
     @PutMapping("/{id}")
-    @PreAuthorize("hasRole('ADMIN')")
-    public ResponseEntity<PostResponse> updatePost(@PathVariable Long id, @RequestBody PostRequest request) {
+//    @PreAuthorize("hasRole('ADMIN')")
+    @IsPostOwnerOrAdmin
+    public ResponseEntity<PostResponse> updatePost(@PathVariable Long id, @RequestBody PostRequest request) throws AccessDeniedException {
         return ResponseEntity.ok(postService.updatePost(id, request));
     }
 
@@ -74,9 +78,22 @@ public class PostController {
      * Returns 204 No Content on success.
      */
     @DeleteMapping("/{id}")
-    @PreAuthorize("hasRole('ADMIN')")
-    public ResponseEntity<Void> deletePost(@PathVariable Long id) {
+//    @PreAuthorize("hasRole('ADMIN')")
+    @IsPostOwnerOrAdmin
+    public ResponseEntity<Void> deletePost(@PathVariable Long id) throws AccessDeniedException {
         postService.deletePost(id);
         return ResponseEntity.noContent().build();
+    }
+
+    @PostMapping("/restore/{id}")
+    @IsPostOwnerOrAdmin
+    public ResponseEntity<PostResponse> restorePost(@PathVariable Long id) throws AccessDeniedException {
+        return ResponseEntity.ok( postService.restorePost(id));
+    }
+
+    @PostMapping("/archive/{id}")
+    @IsPostOwnerOrAdmin
+    public ResponseEntity<PostResponse> archivePost(@PathVariable Long id) throws AccessDeniedException {
+        return ResponseEntity.ok( postService.archivePost(id));
     }
 }

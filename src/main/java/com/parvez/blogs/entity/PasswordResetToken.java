@@ -7,7 +7,12 @@ import lombok.Setter;
 import java.time.Instant;
 
 @Entity
-@Table(name = "password_reset_tokens")
+@Table(name = "password_reset_tokens", indexes = {
+        // Fast lookup by token string on every reset attempt
+        @Index(name = "idx_prt_token", columnList = "token", unique = true),
+        // Fast cleanup of all tokens for a user on password change
+        @Index(name = "idx_prt_username", columnList = "username")
+})
 @Getter
 @Setter
 public class PasswordResetToken {
@@ -24,4 +29,8 @@ public class PasswordResetToken {
 
     @Column(nullable = false)
     private Instant expirationDate;
+
+    public boolean isExpired() {
+        return Instant.now().isAfter(expirationDate);
+    }
 }

@@ -1,20 +1,24 @@
 spring:
+
+  profiles:
+    active: dev
+
   security:
     oauth2:
       client:
         registration:
 
           google:
-            client-id: "705139499171-k4k67ire5g2qn0q4.apps.googleusercontent.com"
-            client-secret: "GOCSPX-_dre5RwvLQiK2SFrKEvuyhGJ"
+            client-id: "705139499171-k4k67ire5g2qppfmvld13com"
+            client-secret: "GOCSPX-_dre5RAfvmwvLQiKyhGJ"
             scope:
               - email
               - profile
             redirect-uri: "http://localhost:8081/login/oauth2/code/google"
             authorization-grant-type: authorization_code
           github:
-            client-id: "Ov23liMOjoKiS4tIx"
-            client-secret: "00308b711c2bc6951d4544c33d7243cf0"
+            client-id: "Ov23liMOjoHsOKitIx"
+            client-secret: "00308b711c2bc690bdf4544c33d7243cf0"
             scope:
               - read:user                                # GitHub's scope for name/avatar
               - user:email                               # Separate scope needed for email
@@ -52,6 +56,18 @@ spring:
     properties:
       hibernate:
         format_sql: false
+
+  mail:
+    host: smtp.gmail.com
+    port: 587
+    username: parvezhossain724@gmail.com
+    password: gmjdrtdctyeaj
+    properties:
+      mail:
+        smtp:
+          auth: true
+          starttls:
+            enable: true
 
   rabbitmq:
     host: localhost
@@ -94,18 +110,6 @@ rate-limiter:
   max-requests: 2
   window-seconds: 30
 
-  mail:
-    host: smtp.gmail.com
-    port: 587
-    username: parvezhossain724@gmail.com
-    password: gmjdrtdctn
-    properties:
-      mail:
-        smtp:
-          auth: true
-          starttls:
-            enable: true
-
 logging:
   level:
     root: INFO
@@ -121,3 +125,12 @@ jwt:
 app:
   pagination:
     max-size: 100
+
+  frontend:
+    url: "http://localhost:8081"
+
+  cleanup:
+    interval-ms: 36000000
+
+  password-reset:
+    expiry-minutes: 10

@@ -13,6 +13,8 @@ public class PostResponse {
     private String slug;
     private String content;
     private String url;
+    private Boolean deleted;
+    private String author;
     private LocalDateTime createdAt;
     private LocalDateTime updatedAt;
 }

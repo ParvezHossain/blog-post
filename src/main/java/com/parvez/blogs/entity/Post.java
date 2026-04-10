@@ -1,11 +1,15 @@
 package com.parvez.blogs.entity;
 
 import jakarta.persistence.*;
-import lombok.Data;
-import org.hibernate.annotations.SQLDelete;
-import org.hibernate.annotations.SoftDelete;
-import org.hibernate.annotations.SoftDeleteType;
+import lombok.*;
+import org.hibernate.annotations.*;
+import org.springframework.data.annotation.CreatedBy;
+import org.springframework.data.annotation.CreatedDate;
+import org.springframework.data.annotation.LastModifiedBy;
+import org.springframework.data.annotation.LastModifiedDate;
+import org.springframework.data.jpa.domain.support.AuditingEntityListener;
 
+import java.io.Serializable;
 import java.time.LocalDateTime;
 
 @Entity
@@ -15,10 +19,17 @@ import java.time.LocalDateTime;
                 @UniqueConstraint(name = "uk_post_slug", columnNames = {"slug"})
         }
 )
-@SoftDelete(columnName = "deleted", strategy = SoftDeleteType.ACTIVE)
-
-@Data
-public class Post {
+@Getter
+@Setter
+@NoArgsConstructor
+@AllArgsConstructor
+@Builder
+@ToString(onlyExplicitlyIncluded = true)
+//@SoftDelete(columnName = "deleted", strategy = SoftDeleteType.ACTIVE)
+@SQLDelete(sql = "UPDATE posts SET deleted = true WHERE id=?")
+@FilterDef(name = "deletedPostFilter", parameters = @ParamDef(name = "isDeleted", type = Boolean.class))
+@Filter(name = "deletedPostFilter", condition = "deleted = :isDeleted")
+public class Post extends Auditable implements Serializable {
 
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
@@ -33,12 +44,32 @@ public class Post {
     @Column(columnDefinition = "TEXT")
     private String content;
 
-    private String url;
-    @Column(nullable = true, columnDefinition = "TEXT")
 
-    private LocalDateTime createdAt;
-    private LocalDateTime updatedAt;
+    @Column(nullable = true, columnDefinition = "TEXT")
+    private String url;
+
 
     @Version
     private Long version;
+
+    @ManyToOne(fetch = FetchType.LAZY)
+    @JoinColumn(name = "author_id", nullable = false)
+    @ToString.Exclude
+    private User author;
+
+    private boolean deleted = Boolean.FALSE;
+
+    @Override
+    public boolean equals(Object o) {
+        if (this == o) return true;
+        if (!(o instanceof Post)) return false;
+        Post post = (Post) o;
+        return id != null && id.equals(post.id);
+    }
+
+    @Override
+    public int hashCode() {
+        return getClass().hashCode();
+    }
+
 }

@@ -101,11 +101,11 @@ public class SecurityConfig {
 
                         /* ================= PROTECTED ================= */
 
-                        // Require ADMIN role for creating, updating, or deleting
-                        .requestMatchers(HttpMethod.POST, ApiPaths.POSTS + "/**").hasRole("ADMIN")
-                        .requestMatchers(HttpMethod.PUT, ApiPaths.POSTS + "/**").hasRole("ADMIN")
-                        .requestMatchers(HttpMethod.PATCH, ApiPaths.POSTS + "/**").hasRole("ADMIN")
-                        .requestMatchers(HttpMethod.DELETE, ApiPaths.POSTS + "/**").hasRole("ADMIN")
+                        .requestMatchers(HttpMethod.POST, ApiPaths.POSTS + "/**").authenticated()
+                        .requestMatchers(HttpMethod.PUT, ApiPaths.POSTS + "/**").authenticated()
+                        .requestMatchers(HttpMethod.PATCH, ApiPaths.POSTS + "/**").authenticated()
+                        .requestMatchers(HttpMethod.DELETE, ApiPaths.POSTS + "/**").authenticated()
+
 
                         .requestMatchers(ApiPaths.API_BASE + "/**")
                         .authenticated()
@@ -119,14 +119,14 @@ public class SecurityConfig {
                         UsernamePasswordAuthenticationFilter.class
                 )
                 .oauth2Login(oauth2 -> oauth2
-                        .authorizationEndpoint(ep -> ep
-                                .baseUri("/oauth2/authorize")        // Start flow:  GET /oauth2/authorize/google
-                        )
+                                .authorizationEndpoint(ep -> ep
+                                        .baseUri("/oauth2/authorize")        // Start flow:  GET /oauth2/authorize/google
+                                )
 //                        .redirectionEndpoint(ep -> ep
 //                                .baseUri("/oauth2/callback/*")
 //                        )
-                        .successHandler(successHandler)
-                        .failureHandler(failureHandler)
+                                .successHandler(successHandler)
+                                .failureHandler(failureHandler)
                 )
         ;
         return http.build();
